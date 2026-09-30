@@ -61,6 +61,34 @@ objeto, o vazamento já aconteceu. O agente `sync-auditor` procura exatamente is
 - Sem SMS como fator.
 - A API só aceita requisição com `X-Edge-Secret` válido (ADR-0006).
 
+## Permissões: `deny` é quebra-molas, não fronteira
+
+A lista `deny` em `.claude/settings.json` reduz acidente. Ela **não** é controle de
+segurança, e tratá-la como tal é pior do que não tê-la, porque dá falsa confiança.
+
+O motivo é estrutural: lista de negação nunca é completa. Sempre existe um comando
+permitido que produz o mesmo efeito por outro caminho. Três exemplos que já estiveram
+liberados neste repositório e contornavam todos os `rm -rf` do `deny`:
+
+| Comando permitido                | Como escapava                                                     |
+| -------------------------------- | ----------------------------------------------------------------- |
+| `find:*`                         | `find specs -delete`, `find . -exec rm -rf {} +`                  |
+| `docker compose exec:*`          | `docker compose exec api rm -rf /app/specs` — o repo é bind mount |
+| `pnpm exec:*`, `pnpm --filter:*` | executam binário arbitrário                                       |
+
+Os quatro foram removidos do `allow` e agora perguntam.
+
+**Regra ao editar as permissões:**
+
+- No `allow` só entra comando cujo **efeito seja conhecido pelo prefixo**. Se o sufixo
+  pode virar execução arbitrária, não entra.
+- Comando que executa outro comando (`exec`, `-exec`, `run`, `sh -c`) **nunca** vai
+  para o `allow` com `:*`.
+- `deny` serve para o que não deve acontecer nem por engano (`--force`, `terraform
+apply`, deploy para prod). Não confie nele para conter intenção.
+- Ao acrescentar entrada no `allow`, pergunte: _"qual o pior comando que casa com este
+  padrão?"_ — e é esse que você está autorizando.
+
 ## Revisão
 
 Antes de todo PR, o agente `security-reviewer` (só leitura) verifica: autorização por
