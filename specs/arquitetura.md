@@ -47,13 +47,19 @@ graph TB
 
 | Serviço  | Onde roda                          | Responsabilidade                                                                                  |
 | -------- | ---------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `web`    | Cloudflare Pages (export estático) | PWA offline-first. Toda leitura e escrita passa pelo Dexie.                                       |
+| `web`    | Cloudflare Pages (export estático) | PWA offline-first, em duas superfícies. Toda leitura e escrita passa pelo Dexie.                  |
 | `api`    | Cloud Run                          | Monólito modular Fastify. Autorização, validação, cálculos, protocolo de sync.                    |
 | `worker` | Cloud Run Jobs + Scheduler         | Trabalho pesado e agendado: importação de planilhas, relatórios, NDVI, clima, geração de PMTiles. |
 | `edge`   | Cloudflare Worker                  | Proxy reverso para a API. Único caminho público até o Cloud Run.                                  |
 | `agent`  | _Fase 2_                           | Assistente agronômico via Vertex AI, com tools. Não existe ainda.                                 |
 
 ## 2. Fronteiras
+
+O `web` tem **duas superfícies sobre o mesmo código**: a de **campo**, mobile-first,
+para o operador no curral e no talhão; e a de **escritório**, densa e operada por
+teclado, para a digitação em série de quem recebe a informação do campo (ADR-0015).
+Mesmo domínio, mesmo Dexie, mesma outbox, mesma checagem de perfil e fazenda — muda só
+o desenho da tela.
 
 - `web` **nunca** fala com `api` direto de um componente. A camada de dados é Dexie; a
   sincronização é um serviço à parte.
