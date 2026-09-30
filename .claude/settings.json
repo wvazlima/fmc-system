@@ -62,6 +62,7 @@
       "Bash(curl -sS http://localhost:*)"
     ],
     "ask": [
+      "Bash(git push:*)",
       "Bash(git commit:*)",
       "Bash(git checkout:*)",
       "Bash(git switch:*)",
@@ -77,8 +78,10 @@
       "Bash(gh pr merge:*)"
     ],
     "deny": [
-      "Bash(git push:*)",
       "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git push --delete:*)",
       "Bash(git reset --hard:*)",
       "Bash(git clean -fd:*)",
       "Bash(git filter-branch:*)",
