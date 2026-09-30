@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+  PNPM_VERSION: '9.15.4'
+
+jobs:
+  check:
+    name: Lint, typecheck, testes e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Formatação
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Testes
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  docker:
+    name: Stack local em Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Sobe a stack
+        run: |
+          cp .env.example .env
+          docker compose up -d --build
+          docker compose up -d --wait --wait-timeout 900 db auth storage mail api worker edge web
+
+      - name: Saúde de todos os serviços
+        run: make health
+
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose logs --tail=200
+
+      - name: Derruba
+        if: always()
+        run: docker compose down -v
+
+  infra:
+    name: Terraform e Terragrunt
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Formatação do Terraform
+        run: terraform fmt -check -recursive infra/
+
+      # A infra ainda não foi escrita (ADR-0014). O passo só roda quando houver .hcl.
+      - name: Há arquivos Terragrunt?
+        id: hcl
+        run: |
+          if find infra -name '*.hcl' -not -path '*/.terragrunt-cache/*' | grep -q .; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "Nenhum .hcl ainda — ver ADR-0014."
+          fi
+
+      - uses: gruntwork-io/terragrunt-action@v2
+        if: steps.hcl.outputs.found == 'true'
+        with:
+          tg_command: hclfmt --check --diff
+          tg_dir: infra/terraform

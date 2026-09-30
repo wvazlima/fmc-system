@@ -1,0 +1,10 @@
+node_modules
+dist
+out
+.next
+.turbo
+coverage
+pnpm-lock.yaml
+packages/db/migrations/*.sql
+apps/web/public/manifest.webmanifest
+docs

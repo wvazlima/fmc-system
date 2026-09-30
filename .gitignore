@@ -1,0 +1,85 @@
+# dependências
+node_modules/
+.pnpm-store/
+
+# build
+apps/web/public/manifest.webmanifest
+dist/
+build/
+out/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# ambiente — .env.example é versionado, o resto não
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Terraform e Terragrunt
+.terraform/
+.terragrunt-cache/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# credenciais — nunca versionadas
+*.pem
+*.key
+*.p12
+*.pfx
+service-account*.json
+gha-creds-*.json
+
+# Cloudflare
+.wrangler/
+.dev.vars
+
+# testes e cobertura
+coverage/
+.nyc_output/
+*.lcov
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# sistema operacional
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# editores
+.idea/
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Claude Code — local
+.claude/settings.local.json
+CLAUDE.local.md
+
+# temporários
+tmp/
+temp/
+.cache/

@@ -1,0 +1,3 @@
+# Variáveis locais do wrangler dev. O arquivo .dev.vars real NÃO é versionado.
+EDGE_SECRET=local-only-not-a-real-secret
+API_ORIGIN=http://api:3001

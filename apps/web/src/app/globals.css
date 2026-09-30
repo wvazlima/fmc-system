@@ -1,0 +1,42 @@
+/*
+ * Base mínima. O design system entra com a primeira tela de verdade
+ * (Tailwind + shadcn/ui, conforme `.claude/rules/web.md`).
+ *
+ * Os números aqui não são estéticos: alvo de toque de 44 px e contraste alto são
+ * requisito de uso no campo (constitution §8).
+ */
+:root {
+  --fmc-touch-target: 44px;
+  --fmc-bg: #ffffff;
+  --fmc-fg: #10231a;
+  --fmc-brand: #1f3d2b;
+  --fmc-muted: #4a5a52;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--fmc-bg);
+  color: var(--fmc-fg);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  /* Mínimo 16px: abaixo disso não se lê no sol. */
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+button,
+a[role='button'],
+[data-touch-target] {
+  min-height: var(--fmc-touch-target);
+  min-width: var(--fmc-touch-target);
+}

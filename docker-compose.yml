@@ -1,0 +1,332 @@
+# Ambiente local completo (ADR-0010).
+#
+# Cada serviço gerenciado do GCP tem um stand-in local atrás da MESMA interface; a troca
+# é por variável de ambiente, nunca por `if (isLocal)` no código.
+#
+#   Cloud SQL            → db      (postgis/postgis:16-3.4)
+#   Identity Platform    → auth    (Firebase Auth Emulator)
+#   Cloud Storage / R2   → storage (SeaweedFS, API S3)
+#   Cloudflare Worker    → edge    (wrangler dev, o mesmo src/index.ts)
+#   Cloud Run Jobs       → worker  (o mesmo src, em loop)
+#   envio de e-mail      → mail    (Mailpit)
+#
+# Todo serviço tem healthcheck: `make up` precisa deixar tudo saudável.
+
+name: fmc
+
+# O pnpm usa links simbólicos. node_modules precisa ficar em volumes NOMEADOS, e não
+# no bind mount — senão os binários nativos do host (macOS) vazam para o Linux.
+x-node-volumes: &node-volumes
+  - ./:/app
+  - nm-root:/app/node_modules
+  - nm-web:/app/apps/web/node_modules
+  - nm-api:/app/apps/api/node_modules
+  - nm-worker:/app/apps/worker/node_modules
+  - nm-edge:/app/apps/edge/node_modules
+  - nm-shared:/app/packages/shared/node_modules
+  - nm-db:/app/packages/db/node_modules
+  - nm-ui:/app/packages/ui/node_modules
+  - nm-config:/app/packages/config/node_modules
+  - web-next:/app/apps/web/.next
+  - edge-wrangler:/app/apps/edge/.wrangler
+
+x-node-build: &node-build
+  context: .
+  dockerfile: docker/Dockerfile.node
+  target: dev
+
+x-node-depends: &node-depends
+  install:
+    condition: service_completed_successfully
+
+services:
+  # ─────────────────────────────────────────────────────────────── banco ────
+  db:
+    # A imagem oficial `postgis/postgis` só publica linux/amd64, o que força emulação
+    # em Mac Apple Silicon. `imresamu/postgis` é a build multi-arch publicada pelos
+    # mantenedores do postgis/docker-postgis. Troque com POSTGRES_IMAGE se preferir a
+    # oficial. Mesma versão maior de Postgres e PostGIS do Cloud SQL (ADR-0010).
+    image: ${POSTGRES_IMAGE:-imresamu/postgis:16-3.5}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fmc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-fmc}
+    ports:
+      - '${DB_HOST_PORT:-5442}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-fmc} -d ${POSTGRES_DB:-fmc}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  # ───────────────────────────────────────────────────── autenticação ──────
+  auth:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.auth
+    restart: unless-stopped
+    ports:
+      - '${AUTH_HOST_PORT:-9098}:9099'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:9099/ > /dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  # ─────────────────────────────────────────── storage (GCS e R2 locais) ───
+  # SeaweedFS expõe API S3 e tem imagem pública; as imagens do MinIO passaram a exigir
+  # autenticação para download. Ver docker/seaweedfs/README.md.
+  storage:
+    image: chrislusf/seaweedfs:3.80
+    restart: unless-stopped
+    environment:
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-fmc-local}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-changeme-local}
+      STORAGE_BUCKET_MAPS: ${STORAGE_BUCKET_MAPS:-fmc-maps}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        sed -e "s|__ACCESS_KEY__|$$STORAGE_ACCESS_KEY|" \
+            -e "s|__SECRET_KEY__|$$STORAGE_SECRET_KEY|" \
+            -e "s|__MAPS_BUCKET__|$$STORAGE_BUCKET_MAPS|" \
+            /etc/seaweedfs/s3.template.json > /tmp/s3.json
+        exec weed server -dir=/data -ip=storage -ip.bind=0.0.0.0 \
+          -master.volumeSizeLimitMB=256 -volume.max=10 \
+          -s3 -s3.port=9000 -s3.config=/tmp/s3.json
+    ports:
+      - '${STORAGE_HOST_PORT:-9000}:9000'
+      - '${STORAGE_MASTER_HOST_PORT:-9333}:9333'
+    volumes:
+      - s3data:/data
+      - ./docker/seaweedfs/s3.template.json:/etc/seaweedfs/s3.template.json:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://localhost:9333/cluster/healthz']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  storage-init:
+    image: chrislusf/seaweedfs:3.80
+    depends_on:
+      storage:
+        condition: service_healthy
+    environment:
+      STORAGE_BUCKET_MEDIA: ${STORAGE_BUCKET_MEDIA:-fmc-media}
+      STORAGE_BUCKET_MAPS: ${STORAGE_BUCKET_MAPS:-fmc-maps}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        printf 's3.bucket.create -name %s\ns3.bucket.create -name %s\n' \
+          "$$STORAGE_BUCKET_MEDIA" "$$STORAGE_BUCKET_MAPS" \
+          | weed shell -master=storage:9333 -filer=storage:8888
+        printf 's3.bucket.list\n' | weed shell -master=storage:9333 -filer=storage:8888
+    restart: 'no'
+
+  # ───────────────────────────────────────────────────────────── e-mail ────
+  mail:
+    image: axllent/mailpit:v1.21
+    restart: unless-stopped
+    ports:
+      - '${SMTP_HOST_PORT:-1026}:1025'
+      - '${MAIL_UI_HOST_PORT:-8026}:8025'
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # ─────────────────────────────── instalação única das dependências ───────
+  # Roda uma vez e sai. Os serviços Node esperam por ela (service_completed_successfully),
+  # o que evita quatro `pnpm install` concorrentes no mesmo volume.
+  install:
+    build: *node-build
+    volumes: *node-volumes
+    working_dir: /app
+    command: >
+      sh -c "
+      if [ -f pnpm-lock.yaml ]; then
+        pnpm install --frozen-lockfile;
+      else
+        pnpm install;
+      fi
+      "
+    restart: 'no'
+
+  # ──────────────────────────────────────────────────────────────── api ────
+  api:
+    build: *node-build
+    restart: unless-stopped
+    working_dir: /app/apps/api
+    command: pnpm dev
+    environment:
+      APP_ENV: local
+      NODE_ENV: development
+      API_HOST: 0.0.0.0
+      API_PORT: 3001
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      DATABASE_URL: postgres://${POSTGRES_USER:-fmc}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-fmc}
+      EDGE_SECRET: ${EDGE_SECRET:-local-only-not-a-real-secret}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-demo-fmc}
+      FIREBASE_AUTH_EMULATOR_HOST: auth:9099
+      STORAGE_ENDPOINT: http://storage:9000
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-fmc-local}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-changeme-local}
+      STORAGE_BUCKET_MEDIA: ${STORAGE_BUCKET_MEDIA:-fmc-media}
+      SMTP_HOST: mail
+      SMTP_PORT: 1025
+    ports:
+      - '${API_HOST_PORT:-3011}:3001'
+    volumes: *node-volumes
+    depends_on:
+      <<: *node-depends
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:3001/health > /dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  # ───────────────────────────────────────────────────────────── worker ────
+  worker:
+    build: *node-build
+    restart: unless-stopped
+    working_dir: /app/apps/worker
+    command: pnpm dev
+    environment:
+      APP_ENV: local
+      NODE_ENV: development
+      DATABASE_URL: postgres://${POSTGRES_USER:-fmc}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-fmc}
+      STORAGE_ENDPOINT: http://storage:9000
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-fmc-local}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-changeme-local}
+      STORAGE_BUCKET_MEDIA: ${STORAGE_BUCKET_MEDIA:-fmc-media}
+      STORAGE_BUCKET_MAPS: ${STORAGE_BUCKET_MAPS:-fmc-maps}
+    volumes: *node-volumes
+    depends_on:
+      <<: *node-depends
+      db:
+        condition: service_healthy
+    # Não expõe HTTP: a liveness é o batimento em /tmp, como em produção.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "const{statSync}=require('node:fs');process.exit(Date.now()-statSync('/tmp/fmc-worker.heartbeat').mtimeMs<60000?0:1)"
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  # ─────────────────────────────────────── borda (Cloudflare Worker) ───────
+  edge:
+    build: *node-build
+    restart: unless-stopped
+    working_dir: /app/apps/edge
+    command: >
+      sh -c "pnpm exec wrangler dev
+      --ip 0.0.0.0 --port 8787
+      --var API_ORIGIN:http://api:3001
+      --var EDGE_SECRET:$${EDGE_SECRET}"
+    environment:
+      EDGE_SECRET: ${EDGE_SECRET:-local-only-not-a-real-secret}
+      WRANGLER_SEND_METRICS: 'false'
+      CI: '1'
+    ports:
+      - '${EDGE_HOST_PORT:-8787}:8787'
+    volumes: *node-volumes
+    depends_on:
+      <<: *node-depends
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8787/__edge/health > /dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  # ──────────────────────────────────────────────────────────────── web ────
+  web:
+    build: *node-build
+    restart: unless-stopped
+    working_dir: /app/apps/web
+    command: pnpm dev
+    environment:
+      APP_ENV: local
+      NODE_ENV: development
+      # vistas pelo NAVEGADOR, no host — não pela rede interna do Compose
+      NEXT_PUBLIC_API_URL: http://localhost:${EDGE_HOST_PORT:-8787}/api
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-demo-fmc}
+      NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST: localhost:${AUTH_HOST_PORT:-9098}
+      WATCHPACK_POLLING: 'true'
+    ports:
+      - '${WEB_HOST_PORT:-3010}:3000'
+    volumes: *node-volumes
+    depends_on: *node-depends
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:3000/ > /dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  # ────────────────────────────── verificação (lint, typecheck, test, build) ───
+  # Fora do `docker compose up` (profile `tools`). Tem o PRÓPRIO volume de `.next`:
+  # rodar `next build` contra o `.next` do servidor de dev em execução corrompe os dois.
+  tools:
+    build: *node-build
+    working_dir: /app
+    profiles: [tools]
+    environment:
+      CI: '1'
+      # Sem NODE_ENV fixo: cada comando define o seu (`next build` precisa de production).
+      DATABASE_URL: postgres://${POSTGRES_USER:-fmc}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-fmc}
+    volumes:
+      - ./:/app
+      - nm-root:/app/node_modules
+      - nm-web:/app/apps/web/node_modules
+      - nm-api:/app/apps/api/node_modules
+      - nm-worker:/app/apps/worker/node_modules
+      - nm-edge:/app/apps/edge/node_modules
+      - nm-shared:/app/packages/shared/node_modules
+      - nm-db:/app/packages/db/node_modules
+      - nm-ui:/app/packages/ui/node_modules
+      - nm-config:/app/packages/config/node_modules
+      - tools-next:/app/apps/web/.next
+      - tools-turbo:/app/.turbo
+    depends_on: *node-depends
+    command: pnpm --version
+
+volumes:
+  pgdata:
+  s3data:
+  nm-root:
+  nm-web:
+  nm-api:
+  nm-worker:
+  nm-edge:
+  nm-shared:
+  nm-db:
+  nm-ui:
+  nm-config:
+  web-next:
+  edge-wrangler:
+  tools-next:
+  tools-turbo:

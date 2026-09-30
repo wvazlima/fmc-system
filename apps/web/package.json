@@ -1,0 +1,33 @@
+{
+  "name": "@fmc/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/generate-manifest.mjs",
+    "dev": "next dev -H 0.0.0.0 -p 3000",
+    "prebuild": "node scripts/generate-manifest.mjs",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0 -p 3000",
+    "lint": "eslint src scripts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf .next out .turbo *.tsbuildinfo public/manifest.webmanifest"
+  },
+  "dependencies": {
+    "@fmc/config": "workspace:*",
+    "@fmc/shared": "workspace:*",
+    "@fmc/ui": "workspace:*",
+    "next": "^15.1.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

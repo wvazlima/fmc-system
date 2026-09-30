@@ -1,0 +1,4 @@
+{
+  "extends": "@fmc/config/tsconfig/node.json",
+  "include": ["src/**/*.ts"]
+}

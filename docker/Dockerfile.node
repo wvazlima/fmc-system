@@ -1,0 +1,64 @@
+# syntax=docker/dockerfile:1
+#
+# Imagem única para os serviços Node do monorepo (api, worker, edge, web).
+# A MESMA imagem serve local e produção: muda o target, não o Dockerfile (ADR-0010).
+#
+#   target `dev`     → bind mount do repositório + hot reload
+#   target `runtime` → artefato construído, usuário sem privilégio
+
+# ─────────────────────────────────────────────────────────────────── base ────
+# Node 24 (LTS atual). Mesma versão maior no CI e no `engines` da raiz.
+FROM node:24-bookworm-slim AS base
+ENV PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH \
+    CI=1 \
+    WRANGLER_SEND_METRICS=false
+# curl é usado pelos healthchecks; git, por ferramentas que inspecionam o repositório
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl ca-certificates git \
+ && rm -rf /var/lib/apt/lists/*
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+WORKDIR /app
+
+# ──────────────────────────────────────────────────────────────────── dev ────
+# O código vem por bind mount e o node_modules por volume nomeado (o pnpm usa links
+# simbólicos, e binário nativo de macOS não roda em Linux). O comando de cada serviço
+# está no docker-compose.yml.
+# NODE_ENV NÃO é fixado aqui, de propósito. A mesma imagem serve ao serviço `tools`,
+# que roda `next build` — e o build precisa definir `production` por conta própria.
+# Com NODE_ENV=development herdado da imagem, o export estático quebra ao
+# pré-renderizar a 404 ("Html should not be imported outside of pages/_document").
+# Cada serviço declara o seu NODE_ENV no docker-compose.yml.
+FROM base AS dev
+CMD ["pnpm", "--version"]
+
+# ─────────────────────────────────────────────────────────────────── deps ────
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
+COPY apps/api/package.json      apps/api/
+COPY apps/worker/package.json   apps/worker/
+COPY apps/edge/package.json     apps/edge/
+COPY apps/web/package.json      apps/web/
+COPY packages/config/package.json  packages/config/
+COPY packages/shared/package.json  packages/shared/
+COPY packages/db/package.json      packages/db/
+COPY packages/ui/package.json      packages/ui/
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+
+# ────────────────────────────────────────────────────────────────── build ────
+FROM deps AS build
+ARG PACKAGE
+COPY . .
+RUN pnpm --filter "${PACKAGE}" build
+
+# ──────────────────────────────────────────────────────────────── runtime ────
+FROM base AS runtime
+ARG PACKAGE
+ARG APP_DIR
+ENV NODE_ENV=production
+COPY --from=build --chown=node:node /app /app
+WORKDIR /app/${APP_DIR}
+# Nunca como root (.claude/rules/infra.md).
+USER node
+CMD ["node", "dist/main.js"]

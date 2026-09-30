@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install)",
+      "Bash(pnpm install --frozen-lockfile)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(pnpm --filter:*)",
+      "Bash(pnpm exec:*)",
+      "Bash(pnpm db:generate:*)",
+      "Bash(pnpm why:*)",
+      "Bash(pnpm list:*)",
+      "Bash(npx tsc:*)",
+      "Bash(make up)",
+      "Bash(make down)",
+      "Bash(make logs:*)",
+      "Bash(make ps)",
+      "Bash(make health)",
+      "Bash(make migrate)",
+      "Bash(make seed)",
+      "Bash(make test)",
+      "Bash(make rebuild)",
+      "Bash(docker compose ps:*)",
+      "Bash(docker compose logs:*)",
+      "Bash(docker compose config:*)",
+      "Bash(docker compose build:*)",
+      "Bash(docker compose up:*)",
+      "Bash(docker compose stop:*)",
+      "Bash(docker compose exec:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker inspect:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git add:*)",
+      "Bash(git stash list:*)",
+      "Bash(terraform fmt:*)",
+      "Bash(terraform validate:*)",
+      "Bash(terraform init:*)",
+      "Bash(terraform plan:*)",
+      "Bash(terragrunt hclfmt:*)",
+      "Bash(terragrunt validate:*)",
+      "Bash(terragrunt init:*)",
+      "Bash(terragrunt plan:*)",
+      "Bash(terragrunt output:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(jq:*)",
+      "Bash(curl -sS localhost:*)",
+      "Bash(curl -sS http://localhost:*)"
+    ],
+    "ask": [
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(git restore:*)",
+      "Bash(docker compose down:*)",
+      "Bash(make clean)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(pnpm update:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)"
+    ],
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -fd:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf ~:*)",
+      "Bash(rm -rf .git:*)",
+      "Bash(rm -rf specs:*)",
+      "Bash(rm -rf apps:*)",
+      "Bash(rm -rf packages:*)",
+      "Bash(rm -rf infra:*)",
+      "Bash(rm -rf .claude:*)",
+      "Bash(terraform apply:*)",
+      "Bash(terraform destroy:*)",
+      "Bash(terraform state rm:*)",
+      "Bash(terraform import:*)",
+      "Bash(terragrunt apply:*)",
+      "Bash(terragrunt destroy:*)",
+      "Bash(terragrunt run-all:*)",
+      "Bash(terragrunt state:*)",
+      "Bash(terragrunt import:*)",
+      "Bash(gcloud run deploy:*)",
+      "Bash(gcloud sql:*)",
+      "Bash(gcloud secrets:*)",
+      "Bash(wrangler deploy:*)",
+      "Bash(wrangler secret:*)",
+      "Bash(wrangler r2:*)",
+      "Bash(wrangler pages deploy:*)",
+      "Bash(docker compose down -v:*)",
+      "Bash(docker system prune:*)",
+      "Bash(docker volume rm:*)",
+      "Bash(psql:*)",
+      "Bash(dropdb:*)",
+      "Bash(pnpm publish:*)",
+      "Bash(npm publish:*)",
+      "Read(./.env)",
+      "Read(./**/.env)",
+      "Read(./**/.env.local)",
+      "Read(./**/*.tfvars)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./**/service-account*.json)",
+      "Edit(./packages/db/migrations/**)",
+      "Write(./packages/db/migrations/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-applied-migrations.sh",
+            "timeout": 20,
+            "statusMessage": "Verificando se a migração já foi aplicada..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-secrets.sh",
+            "timeout": 20,
+            "statusMessage": "Procurando segredo no conteúdo..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git commit *)",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/test-before-commit.sh",
+            "timeout": 300,
+            "statusMessage": "Rodando os testes dos pacotes afetados..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/format-and-check.sh",
+            "timeout": 240,
+            "statusMessage": "Formatando e checando o pacote afetado..."
+          }
+        ]
+      }
+    ]
+  }
+}

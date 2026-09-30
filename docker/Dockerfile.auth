@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1
+#
+# Firebase Auth Emulator (ADR-0012).
+#
+# Em produção a autenticação é o Identity Platform. No local usamos o emulador oficial,
+# com o MESMO SDK e o MESMO fluxo de token — não existe caminho de autenticação
+# alternativo no código. O emulador é Java, por isso o JRE.
+FROM node:24-bookworm-slim
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends default-jre-headless curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g firebase-tools@13 && npm cache clean --force
+
+WORKDIR /srv
+COPY docker/firebase/firebase.json ./firebase.json
+RUN mkdir -p /srv/.cache && chown -R node:node /srv
+
+USER node
+ENV HOME=/srv
+EXPOSE 9099
+
+# Projeto com prefixo "demo-" roda sem credencial de nuvem.
+CMD ["firebase", "emulators:start", "--only", "auth", "--project", "demo-fmc"]

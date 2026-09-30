@@ -1,0 +1,22 @@
+name = "fmc-edge"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
+workers_dev = false
+
+# Nenhum binding de KV, D1 ou Durable Objects: dado de negócio não fica na borda
+# (constitution §9, ADR-0006).
+
+[vars]
+# Sobrescrito por ambiente. No local, vem do .env via `wrangler dev --var`.
+API_ORIGIN = "http://api:3001"
+
+# EDGE_SECRET é secret do Worker (`wrangler secret put EDGE_SECRET`), nunca `vars`.
+
+[env.dev]
+name = "fmc-edge-dev"
+
+[env.staging]
+name = "fmc-edge-staging"
+
+[env.production]
+name = "fmc-edge"
