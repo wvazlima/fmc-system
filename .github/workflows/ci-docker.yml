@@ -1,0 +1,87 @@
+name: CI · Docker
+
+# Workflow SEPARADO de propósito (repositório privado, minutos de Actions são pagos).
+# Com `paths` no nível do workflow, um commit que só mexe em `specs/`, `docs/` ou nos
+# arquivos do Claude Code NÃO liga runner nenhum — o custo é literalmente zero.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'docker/**'
+      - 'docker-compose.yml'
+      - 'Makefile'
+      - 'pnpm-lock.yaml'
+      - 'package.json'
+      - '.github/workflows/ci-docker.yml'
+  pull_request:
+    branches: [main]
+    # GitHub Actions não suporta âncoras YAML — a lista precisa ser repetida.
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'docker/**'
+      - 'docker-compose.yml'
+      - 'Makefile'
+      - 'pnpm-lock.yaml'
+      - 'package.json'
+      - '.github/workflows/ci-docker.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stack:
+    name: Stack local sobe e responde
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # As duas imagens são construídas aqui, com cache de camadas, e não pelo Compose.
+      # O peso está no `fmc-auth` (JRE + firebase-tools): com cache, vira restauração.
+      - name: Imagem Node
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.node
+          target: dev
+          tags: fmc-node:dev
+          load: true
+          cache-from: type=gha,scope=node
+          cache-to: type=gha,mode=max,scope=node
+
+      - name: Imagem do emulador de autenticação
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.auth
+          tags: fmc-auth:dev
+          load: true
+          cache-from: type=gha,scope=auth
+          cache-to: type=gha,mode=max,scope=auth
+
+      - name: Sobe a stack
+        run: |
+          cp .env.example .env
+          docker compose up -d --no-build
+          docker compose up -d --no-build --wait --wait-timeout 900 \
+            db auth storage mail api worker edge web
+
+      - name: Saúde de todos os serviços
+        run: make health
+
+      - name: Migrações aplicam
+        run: make migrate
+
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose logs --tail=200
+
+      - name: Derruba
+        if: always()
+        run: docker compose down -v

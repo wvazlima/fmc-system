@@ -30,10 +30,12 @@ x-node-volumes: &node-volumes
   - web-next:/app/apps/web/.next
   - edge-wrangler:/app/apps/edge/.wrangler
 
-x-node-build: &node-build
-  context: .
-  dockerfile: docker/Dockerfile.node
-  target: dev
+# Todos os serviços Node são a MESMA imagem. Só o serviço `install` declara o `build`:
+# se vários declarassem, o buildx tentaria exportar a mesma tag em paralelo e falharia
+# com "image already exists". Os demais apenas referenciam a imagem, que o `install`
+# produz — e ele é dependência de todos.
+x-node-service: &node-service
+  image: fmc-node:dev
 
 x-node-depends: &node-depends
   install:
@@ -66,6 +68,7 @@ services:
 
   # ───────────────────────────────────────────────────── autenticação ──────
   auth:
+    image: fmc-auth:dev
     build:
       context: .
       dockerfile: docker/Dockerfile.auth
@@ -153,7 +156,11 @@ services:
   # Roda uma vez e sai. Os serviços Node esperam por ela (service_completed_successfully),
   # o que evita quatro `pnpm install` concorrentes no mesmo volume.
   install:
-    build: *node-build
+    <<: *node-service
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.node
+      target: dev
     volumes: *node-volumes
     working_dir: /app
     command: >
@@ -168,7 +175,7 @@ services:
 
   # ──────────────────────────────────────────────────────────────── api ────
   api:
-    build: *node-build
+    <<: *node-service
     restart: unless-stopped
     working_dir: /app/apps/api
     command: pnpm dev
@@ -204,7 +211,7 @@ services:
 
   # ───────────────────────────────────────────────────────────── worker ────
   worker:
-    build: *node-build
+    <<: *node-service
     restart: unless-stopped
     working_dir: /app/apps/worker
     command: pnpm dev
@@ -236,7 +243,7 @@ services:
 
   # ─────────────────────────────────────── borda (Cloudflare Worker) ───────
   edge:
-    build: *node-build
+    <<: *node-service
     restart: unless-stopped
     working_dir: /app/apps/edge
     command: >
@@ -264,7 +271,7 @@ services:
 
   # ──────────────────────────────────────────────────────────────── web ────
   web:
-    build: *node-build
+    <<: *node-service
     restart: unless-stopped
     working_dir: /app/apps/web
     command: pnpm dev
@@ -291,7 +298,7 @@ services:
   # Fora do `docker compose up` (profile `tools`). Tem o PRÓPRIO volume de `.next`:
   # rodar `next build` contra o `.next` do servidor de dev em execução corrompe os dois.
   tools:
-    build: *node-build
+    <<: *node-service
     working_dir: /app
     profiles: [tools]
     environment:

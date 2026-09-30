@@ -16,13 +16,11 @@ env:
 
 jobs:
   check:
-    name: Lint, typecheck, testes e build
+    name: Formatação, lint, typecheck, testes e build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
         with:
@@ -49,32 +47,6 @@ jobs:
 
       - name: Build
         run: pnpm build
-
-  docker:
-    name: Stack local em Docker
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Sobe a stack
-        run: |
-          cp .env.example .env
-          docker compose up -d --build
-          docker compose up -d --wait --wait-timeout 900 db auth storage mail api worker edge web
-
-      - name: Saúde de todos os serviços
-        run: make health
-
-      - name: Logs em caso de falha
-        if: failure()
-        run: docker compose logs --tail=200
-
-      - name: Derruba
-        if: always()
-        run: docker compose down -v
 
   infra:
     name: Terraform e Terragrunt
