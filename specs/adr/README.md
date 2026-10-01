@@ -24,3 +24,4 @@ Use `/adr <título>` para criar um a partir de `specs/_templates/adr.md`.
 | [0014](0014-um-ambiente-de-nuvem-na-fase-1.md)       | Um ambiente de nuvem na Fase 1: local é o dev      | aceito   |
 | [0015](0015-entrada-primaria-no-escritorio.md)       | Entrada primária de dados no escritório            | proposto |
 | [0016](0016-dimensionamento-inicial-da-nuvem.md)     | Dimensionamento inicial da nuvem                   | aceito   |
+| [0017](0017-modulos-contratados-na-camada-de-acesso.md) | Módulos contratados na camada de acesso          | aceito   |

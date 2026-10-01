@@ -116,6 +116,14 @@ nenhum outro dado tem onde se pendurar.
    dependem dela.
 7. O `AccessScope` é resolvido **uma vez**, antes do domínio, e vem do banco
    (`.claude/rules/api.md`).
+8. Toda fazenda tem **forma de posse** (`tenure`): `owned` ou `leased`. **Hoje as cinco
+   são próprias** — o produtor confirmou em 2026-09-30 que não há arrendamento, mas que
+   pode vir a haver. O campo entra **agora**, com `owned` como padrão.
+
+> O campo custa uma coluna hoje e custa uma migração com reprocessamento contábil
+> depois. Arrendamento muda o tratamento no livro caixa e no LCDPR (feature `029`): o
+> arrendatário lança o arrendamento como despesa e o imóvel aparece com participação
+> diferente. Descobrir isso com dois anos de lançamentos dentro é caro.
 
 ## Fora de escopo
 
@@ -123,6 +131,9 @@ nenhum outro dado tem onde se pendurar.
 - Convite por e-mail e recuperação de senha pela interface — a Fase 1 usa o fluxo
   padrão do Identity Platform.
 - Permissão granular por módulo. São três perfis fixos.
+- **Tratamento contábil do arrendamento** — o campo existe, a regra não. Entra quando
+  houver a primeira fazenda arrendada, com a resposta do contador (dúvida 2).
+- Módulos comerciais (o que a organização contratou) — ver dúvida 6.
 - Geometria da fazenda e dos talhões — feature `012`.
 - Consolidado com números — depende de `009` e `010`; aqui é só a navegação.
 
@@ -131,7 +142,8 @@ nenhum outro dado tem onde se pendurar.
 | #   | Dúvida                                                                                             | Para quem | Estado |
 | --- | -------------------------------------------------------------------------------------------------- | --------- | ------ |
 | 1   | As cinco fazendas são todas do mesmo CPF, ou há imóveis em nome de mais de um proprietário?        | produtor  | aberta |
-| 2   | Existe fazenda arrendada? Se sim, o contrato muda o tratamento contábil e o LCDPR?                 | contador  | aberta |
+| 2   | **Respondida em 2026-09-30 (produtor): não há arrendamento hoje, mas pode vir a haver.** O campo `tenure` entra agora. Falta a parte do contador: quando houver, como o arrendamento é lançado no livro caixa e como o imóvel aparece no LCDPR? | contador  | aberta |
 | 3   | Quantos operadores por fazenda, e há quem trabalhe em mais de uma no mesmo período?                | produtor  | aberta |
 | 4   | Gerente pode cadastrar fazenda, ou só o dono?                                                      | produtor  | aberta |
 | 5   | Além de nome, município, UF e IE, o cadastro precisa de área total, matrícula ou código do imóvel? | contador  | aberta |
+| 6   | **Respondida pelo ADR-0017:** existe entitlement por organização, resolvido na mesma camada do `AccessScope`. A organização do piloto nasce com plano `unlimited`. O modelo comercial (preço por porte, quais módulos se vendem juntos) segue aberto, mas não bloqueia o código. | —         | fechada |
