@@ -111,6 +111,30 @@ levantamento — qual decisão ele quer tomar e hoje não consegue por falta de 
   produtor, identificado como tal (constitution §10, feature `023`)
 - **E** nenhuma cotação de terceiro é exibida sem licença
 
+### CA-08 · O assistente responde pela tool, nunca pela cabeça
+
+- **Dado** que o produtor pergunta ao assistente *"vale a pena segurar o café mais três
+  meses?"*
+- **Quando** o assistente responde
+- **Então** ele chama a tool determinística `hold_or_sell_breakeven(lotId, months)`, que
+  executa **o mesmo código de `@fmc/shared`** da CA-01
+- **E** todo número da resposta vem da tool — nenhum é produzido pelo modelo
+  (constitution §4, skill `ia-assistente` regra 1)
+- **E** a resposta cita a origem de cada premissa: medida, configurada ou estimada
+  (regra 3)
+- **E** se faltar premissa, ele diz o que falta e **não estima**
+- **E** ele apresenta o ponto de equilíbrio e os cenários **sem recomendar** vender ou
+  segurar (constitution §7, CA-05)
+
+> Exemplo do que é aceitável:
+>
+> *"Para empatar com a venda de hoje, a saca precisaria chegar a R$ 1.590,25 — 1,94%
+> acima dos R$ 1.560,00 líquidos de agora. A conta considera R$ 3.600,00 de armazenagem
+> em três meses (taxa configurada de R$ 1,20/saca/mês) e 16,76 sacas de perda projetada
+> por secagem, de 12,0% para 10,5% de umidade — essa última é **estimativa**, porque o
+> lote ainda não tem leitura suficiente. O custo de capital não está na conta: não há
+> taxa definida."*
+
 ### CA-OFF · Cenário offline
 
 - **Dado** que o dono está sem conexão e quer decidir sobre uma proposta recebida por
@@ -145,6 +169,11 @@ levantamento — qual decisão ele quer tomar e hoje não consegue por falta de 
 7. A decisão registrada congela as premissas da data, para comparação honesta depois.
 8. O sistema apresenta cenários; não recomenda (constitution §7).
 9. O mesmo código de cálculo roda no cliente e no servidor, em `@fmc/shared`.
+10. O assistente (Fase 2) **consome a mesma função como tool**. Não existe segunda
+    implementação do cálculo para a IA — se houvesse, os dois números divergiriam e o
+    produtor não saberia em qual acreditar.
+11. A tool devolve número **e** procedência de cada premissa; o assistente é obrigado a
+    repassar as duas coisas.
 
 ## Fora de escopo
 

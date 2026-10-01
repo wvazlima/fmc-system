@@ -134,11 +134,14 @@ licença assinada.
 4. Câmbio é uma série própria, com a mesma exigência de fonte e licença. A API PTAX do
    Banco Central (ODbL) atende sem custo, com atribuição — ver
    `specs/levantamento/2026-09-30-pesquisa-normativa.md`.
-5. Referência **nunca** preenche automaticamente o preço de um lançamento.
-6. Preço de contraparte (o que um comprador ofereceu) é série do tipo `counterparty` e
+5. **Cotação de fim de dia basta.** A decisão que esta série alimenta (feature `021`)
+   tem horizonte de meses; pagar por tempo real seria comprar precisão que a decisão não
+   usa — e tempo real é justamente a faixa cara do licenciamento.
+6. Referência **nunca** preenche automaticamente o preço de um lançamento.
+7. Preço de contraparte (o que um comprador ofereceu) é série do tipo `counterparty` e
    pertence à organização — não é dado de mercado.
-7. Operador não acessa nenhuma parte desta feature (constitution §6).
-8. Dado de cotação fica no Cloud SQL (constitution §9).
+8. Operador não acessa nenhuma parte desta feature (constitution §6).
+9. Dado de cotação fica no Cloud SQL (constitution §9).
 
 ## Fora de escopo
 
@@ -146,6 +149,9 @@ licença assinada.
 - Execução de hedge, contrato futuro ou opção.
 - Cotação de insumo (adubo, defensivo) — feature `027` trata do preço pago, não de
   índice de mercado.
+- Licença direta com a bolsa (ICE): fora de escopo pelo custo. O caminho é revendedor
+  ou referência manual.
+- Cotação em tempo real: a decisão da `021` tem horizonte de meses.
 - Preço de leite por litro — depende da dúvida 1.
 
 ## Dúvidas abertas
@@ -155,6 +161,7 @@ licença assinada.
 | 1   | **"Gado leiteiro" apareceu pela primeira vez aqui.** Existe produção de leite nas fazendas, ou o pedido é só a cotação da vaca de descarte para abate? | produtor  | aberta |
 | 2   | Se houver leite, é uma quarta frente (produção diária, litragem, laticínio) e precisa de spec própria. Confirmar.                                    | produtor  | aberta |
 | 3   | Levantado: os indicadores CEPEA são **CC BY-NC 4.0** — uso comercial exige licença contratada. Há disposição a pagar?                                | produtor  | aberta |
+| 3b  | Levantado: licenciar **direto da ICE** é inviável nesta escala (redistribuição US$ 5.000; dado de fim de dia US$ 10.000 por produto). Via revendedor (ordem de US$ 49 a 499/mês) é viável — **confirmar se a licença permite exibir ao usuário final**, que é sempre a parte cara. | —         | aberta |
 | 4   | Qual referência ele usa hoje na prática para decidir: cooperativa, corretor, notícia, vizinho?                                                       | produtor  | aberta |
 | 5   | O preço da cooperativa já serve de referência? Ela publica isso de forma utilizável?                                                                 | produtor  | aberta |
 | 6   | Qual o diferencial de praça típico do café da região em relação a Nova York?                                                                         | produtor  | aberta |

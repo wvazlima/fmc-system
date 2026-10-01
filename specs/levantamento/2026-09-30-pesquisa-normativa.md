@@ -82,12 +82,40 @@ Fontes: [AgroDoc — LC 224/2025, Funrural pecuária](https://agrodocai.com.br/l
 | O indicador do café é em **R$ por saca de 60 kg**, cotado em São Paulo; o do boi gordo é média diária ponderada do estado de São Paulo, ambos ajustados pela taxa CDI do prazo de pagamento. | A referência de São Paulo **não é o preço na porteira do Sul de Minas**: existe diferencial de praça. Reforça a dúvida 6 da `023`. |
 | **Câmbio tem alternativa pública e gratuita:** a API PTAX do Banco Central (`olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/`) publica cotação diária em JSON/XML/CSV sob **Open Database License (ODbL)**. | **Responde a dúvida 7 da `023`**: dá para ter câmbio oficial sem licença paga. Falta só respeitar a atribuição da ODbL. |
 
+### Cotação de bolsa: licenciar direto da ICE está fora de cogitação
+
+| Caminho                            | Custo                                                        |
+| ---------------------------------- | ------------------------------------------------------------ |
+| **ICE direto** — redistribuição    | **US$ 5.000** (não-membro)                                   |
+| **ICE direto** — dado de fim de dia | **US$ 10.000 por produto**                                   |
+| **Revendedor** (ex.: Nasdaq Data Link) | ordem de **US$ 49 a 499/mês**, com dado atrasado          |
+| **Barchart**                       | intradiário atrasado em 10 min, preço de API sob consulta     |
+
+Duas conclusões de projeto:
+
+1. **Licença direta com a bolsa não cabe neste negócio.** O caminho é revendedor — e a
+   pergunta decisiva não é o preço da assinatura, é se a licença dele **permite exibir o
+   dado ao usuário final**. Redistribuição é sempre a parte cara, e a maioria dos planos
+   baratos é "uso interno, sem display a terceiros".
+2. **Dado de fim de dia basta.** A decisão que a cotação alimenta — segurar ou vender o
+   café (feature `021`) — tem horizonte de **meses**. Pagar por tempo real é comprar
+   precisão que a decisão não usa, e tempo real é exatamente a faixa cara.
+
+E o mais importante: **a feature `021` funciona sem nenhuma cotação de bolsa.** O número
+que decide é o **preço líquido na porteira de hoje**, que vem da proposta na mesa
+(feature `011`), não de Nova York. A cotação internacional dá contexto; ela não é
+pré-requisito. Projetar preço futuro, aliás, está explicitamente fora do escopo da `021`.
+
 **Continua aberto:** se há disposição a pagar licença do CEPEA; qual referência ele usa
-hoje de fato; se o preço da cooperativa serve; qual o diferencial da praça dele.
+hoje de fato; se o preço da cooperativa serve; qual o diferencial da praça dele; e se a
+licença de um revendedor cobre exibição ao usuário final.
 
 Fontes: [CEPEA — indicador boi gordo](https://www.cepea.org.br/br/indicador/boi-gordo.aspx) ·
 [CEPEA — indicador café](https://cepea.org.br/br/indicador/cafe.aspx) ·
 [CEPEA — metodologia do indicador boi gordo CEPEA/B3 (PDF)](https://www.cepea.org.br/upload/kceditor/files/Cepea_B3_Metodologia_Indicador_BOI_02_01_2020.pdf) ·
+[ICE — tabela de tarifas de market data 2026 (PDF)](https://www.ice.com/publicdocs/Fee_Overview_2026.pdf) ·
+[Barchart — cotações de café](https://www.barchart.com/futures/quotes/KCU26/futures-prices) ·
+[Nordic APIs — APIs de dados de futuros](https://nordicapis.com/11-apis-for-futures-data/) ·
 [Banco Central — API de taxas de câmbio, dados abertos](https://dadosabertos.bcb.gov.br/dataset/taxas-de-cambio-todos-os-boletins-diarios)
 
 ---
