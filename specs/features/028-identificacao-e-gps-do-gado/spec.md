@@ -30,8 +30,13 @@ O produtor levantou duas coisas diferentes, e misturá-las seria um erro:
   fica quatro meses na fazenda é uma conta bem diferente de rastrear matriz que fica
   anos.
 
-Esta spec trata as duas, na ordem certa, e deixa a segunda condicionada à conta
-fechar.
+Há ainda um terceiro uso, que é o que normalmente motiva o pedido: **furto**. Ele muda
+o desenho, porque exige frequência de transmissão — e frequência é exatamente o que
+consome a bateria. Os brincos conectados disponíveis enviam **duas posições por dia** e
+duram cerca de um ano. Para manejo, ótimo. Para furto, inútil: o caminhão sai às duas da
+manhã e o dono descobre ao meio-dia.
+
+Esta spec trata os três, na ordem certa, e deixa o rastreio condicionado à conta fechar.
 
 ## Usuários e perfis afetados
 
@@ -113,6 +118,53 @@ fechar.
 - **E** o custo é apropriado ao lote ou à fazenda, conforme o rateio configurado
   (feature `010`)
 
+### CA-08 · Sentinelas: poucos dispositivos, o lote inteiro coberto
+
+- **Dado** um lote de 40 animais num piquete
+- **Quando** o gerente define as **sentinelas** do lote
+- **Então** apenas **3 animais** recebem dispositivo, e o lote é considerado coberto
+- **E** o sistema avisa quando um lote fica **sem sentinela ativa** — por venda, morte,
+  queda do dispositivo ou bateria encerrada — e pede a transferência para outro animal
+- **E** o painel mostra, por fazenda, quantos lotes estão cobertos e quantos não estão
+
+> Gado em lote anda junto; ninguém furta um animal, furta o lote. A sentinela é o sensor,
+> o lote é o que se protege. **Três e não uma**: com uma só, qualquer silêncio vira
+> cegueira; com três, o sistema distingue **defeito** (uma emudece) de **evento** (as três
+> emudecem juntas).
+
+### CA-09 · O alerta nasce do cruzamento, não da coordenada
+
+- **Dado** uma sentinela que cruza a cerca virtual às 2h da manhã
+- **Quando** o sistema avalia o evento
+- **Então** ele verifica se existe **transferência programada** (feature `005`), **venda
+  registrada** (features `006` e `024`) ou **GTA emitida** para aquele lote
+- **E** não havendo nenhuma, o alerta é emitido como **movimentação não prevista**
+- **E** havendo, o movimento é registrado como esperado e **nenhum alerta é disparado**
+
+> É o cruzamento que separa alarme de falso positivo — e é o que um rastreador de
+> prateleira não faz, porque ele não sabe que existe uma venda.
+
+### CA-10 · Silêncio e remoção são alertas, não ausência de dado
+
+- **Dado** uma sentinela que para de transmitir fora da janela esperada
+- **Quando** o prazo configurado de silêncio é ultrapassado
+- **Então** é gerado alerta de **perda de contato**, com a última posição conhecida
+- **E** o dispositivo que reporta **remoção** (quando o hardware suporta) gera alerta
+  imediato
+- **E** três sentinelas do mesmo lote em silêncio dentro da mesma janela elevam a
+  severidade
+
+### CA-11 · Modo recuperação
+
+- **Dado** um alerta de movimentação não prevista
+- **Quando** o gerente aciona o modo recuperação
+- **Então** os dispositivos daquele lote passam a transmitir na **frequência máxima que
+  o hardware permite**, e a tela acompanha o deslocamento
+- **E** o sistema registra que a autonomia está sendo consumida, com estimativa de
+  duração
+- **E** o modo expira sozinho no prazo configurado, para não torrar a bateria de todos
+  os dispositivos num falso positivo
+
 ### CA-OFF · Cenário offline
 
 - **Dado** que o operador está no curral, sem sinal, com o leitor na mão
@@ -147,10 +199,19 @@ fechar.
 5. Posição de GPS é série temporal do animal, com precisão declarada; posição imprecisa
    não gera alerta.
 6. Dispositivo tem custo de aquisição e custo recorrente, rastreados e rateados.
-7. Alerta descreve o fato, nunca a causa (constitution §7).
-8. Telemetria fica no Cloud SQL (constitution §9); o provedor é integração, não fonte
-   de verdade.
-9. Operador nunca recebe valor (constitution §6).
+7. **Cobertura é por lote, não por animal.** Um lote é coberto quando tem o número
+   mínimo de sentinelas ativas (padrão 3, configurável). Lote descoberto é pendência.
+8. O dispositivo é **ativo que circula**: sai de um animal, entra em outro, e o custo
+   acompanha o lote.
+9. **Nenhum alerta é emitido sem consultar as movimentações esperadas.** Posição sozinha
+   não é evento.
+10. Frequência de transmissão é **configurável por modo**: rotina (economia) e
+    recuperação (máxima). O modo recuperação é temporário e expira.
+11. Alerta descreve o fato, nunca a causa (constitution §7) — "saiu da área sem
+    movimentação prevista", nunca "furto".
+12. Telemetria fica no Cloud SQL (constitution §9); o provedor é integração, não fonte
+    de verdade.
+13. Operador nunca recebe valor (constitution §6).
 
 ## Fora de escopo
 
@@ -159,6 +220,10 @@ fechar.
 - Balança eletrônica integrada e captura automática de peso — ver dúvida 6.
 - Certificação SISBOV e exigências de exportação — ver dúvida 4.
 - Comportamento animal, cio por sensor e sensoriamento de saúde.
+- Promessa de **impedir** furto. O sistema encurta o tempo entre o fato e a descoberta,
+  que é o que determina a chance de recuperação — não evita o roubo.
+- Acionamento automático de autoridade policial.
+- Câmera e leitura de placa na porteira.
 
 ## Dúvidas abertas
 
@@ -171,3 +236,6 @@ fechar.
 | 5   | Já existe fornecedor de rastreio em vista? Qual o custo por animal/mês? Isso define se a feature é viável.                                     | produtor  | aberta |
 | 6   | Existe balança com saída de dados no curral? Integrá-la pouparia mais digitação que o GPS.                                                     | produtor  | aberta |
 | 7   | O rastreador é despesa do período ou imobilizado a depreciar?                                                                                  | contador  | aberta |
+| 8   | **Houve furto de gado nas fazendas?** Quantos animais, com que frequência, e como foi descoberto? É isso que define se a feature se paga.      | produtor  | aberta |
+| 9   | Quantos lotes existem ao mesmo tempo, nas cinco fazendas? É esse número — não o de cabeças — que dimensiona o investimento em sentinelas.      | produtor  | aberta |
+| 10  | Três sentinelas por lote é razoável para a realidade dele, ou os lotes se misturam e se dividem demais no pasto?                               | produtor  | aberta |
