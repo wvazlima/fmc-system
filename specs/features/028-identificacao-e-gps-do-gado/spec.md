@@ -203,6 +203,10 @@ Esta spec trata os três, na ordem certa, e deixa o rastreio condicionado à con
    mínimo de sentinelas ativas (padrão 3, configurável). Lote descoberto é pendência.
 8. O dispositivo é **ativo que circula**: sai de um animal, entra em outro, e o custo
    acompanha o lote.
+8b. **Um adaptador por fornecedor.** O domínio consome um contrato nosso — posição,
+    bateria, remoção, identificador — e cada provedor tem seu adaptador. Isso permite
+    trocar de fornecedor sem tocar na regra e rodar **dois ao mesmo tempo** (celular
+    onde há sinal, LoRaWAN onde não há).
 9. **Nenhum alerta é emitido sem consultar as movimentações esperadas.** Posição sozinha
    não é evento.
 10. Frequência de transmissão é **configurável por modo**: rotina (economia) e
@@ -233,7 +237,9 @@ Esta spec trata os três, na ordem certa, e deixa o rastreio condicionado à con
 | 2   | O brinco é só visual ou já existe eletrônico? Existe bastão leitor na fazenda?                                                                | produtor  | aberta |
 | 3   | GPS seria para todo o rebanho ou só para matriz e animal de maior valor? Com giro de 100–300 por mês, rastrear tudo pode não fechar a conta.   | produtor  | aberta |
 | 4   | As fazendas têm cobertura de celular no pasto? Sem isso, o rastreador precisa ser satelital, e o custo muda de patamar.                        | produtor  | aberta |
-| 5   | Já existe fornecedor de rastreio em vista? Qual o custo por animal/mês? Isso define se a feature é viável.                                     | produtor  | aberta |
+| 5   | Já existe fornecedor de rastreio em vista? Qual o custo por animal/mês?                                                                        | produtor  | aberta |
+| 5b  | **O fornecedor tem API?** Critério eliminatório, antes de preço: sem acesso programático à posição, o dado não entra no nosso banco e o cruzamento da CA-09 não existe — o cliente fica com dois sistemas que não se falam. Os nacionais (iBoi, InstaBov) não publicam documentação; perguntar. | —         | aberta |
+| 5c  | A frequência de transmissão é configurável? Brinco que envia duas posições por dia serve para manejo e não serve para furto (CA-11).            | —         | aberta |
 | 6   | Existe balança com saída de dados no curral? Integrá-la pouparia mais digitação que o GPS.                                                     | produtor  | aberta |
 | 7   | O rastreador é despesa do período ou imobilizado a depreciar?                                                                                  | contador  | aberta |
 | 8   | **Houve furto de gado nas fazendas?** Quantos animais, com que frequência, e como foi descoberto? É isso que define se a feature se paga.      | produtor  | aberta |
