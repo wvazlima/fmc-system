@@ -123,7 +123,8 @@ animal no caderno do inseminador.
 ## Fora de escopo
 
 - Receituário e prescrição — proibido (constitution §7).
-- Controle de estoque de sêmen, vacina e hormônio com saldo em tempo real.
+- Controle de estoque de sêmen, vacina e hormônio com saldo em tempo real — feature
+  `017`, que trata o estoque de insumos como frente própria.
 - Genealogia, genética e escolha de touro.
 - Calendário sanitário com alerta automático — Fase 2.
 - Curva de ganho de peso.

@@ -139,7 +139,7 @@ mudar adubação, tudo vira intuição.
 
 - Recomendação de produto ou dose — proibido (constitution §7).
 - Receituário agronômico e obrigações do MAPA.
-- Estoque de insumos com saldo em tempo real.
+- Estoque de insumos com saldo em tempo real — feature `017`.
 - Análise de solo e recomendação de adubação.
 - Alerta de custo fora da curva — Fase 2, com o assistente.
 - Rateio de custo compartilhado — feature `010`.

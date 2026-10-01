@@ -30,6 +30,13 @@ fecha o mês e o contador recebe a exportação.
 | 13  | Importação do histórico das planilhas                                            | `013-importacao-historico-planilhas`     |
 | 14  | Importação de XML de notas fiscais                                               | `014-importacao-xml-notas-fiscais`       |
 | 15  | Exportação contábil em planilha                                                  | `015-exportacao-contabil-planilha`       |
+| 16  | Cadastro de contrapartes: fornecedores e clientes                                | `016-cadastro-contrapartes`              |
+| 17  | Estoque de insumos e almoxarifado — **escopo a confirmar**                       | `017-estoque-de-insumos`                 |
+| 24  | Leilão: venda de lote em pregão                                                  | `024-venda-em-leilao`                    |
+
+As features 16, 17 e 24 vieram dos insumos de **2026-09-30** e **não estavam na
+estimativa original das 16 semanas** — ver "Insumos de 2026-09-30", no fim deste
+documento.
 
 Ainda sem spec, previstos na Fase 1:
 
@@ -60,8 +67,10 @@ Começa após 1 a 2 meses de uso real da Fase 1.
   prescreve defensivo nem dose (§7).
 - **Integração com o Folhamatic**: importação da folha por arquivo texto, distribuição
   de salários e encargos por fazenda e por frente.
-- **Livro caixa e LCDPR**: livro caixa digital do produtor rural, regime de caixa, por
-  imóvel, com participantes e contas bancárias, no layout oficial.
+- **Livro caixa e LCDPR** (`029-livro-caixa-e-lcdpr`): livro caixa digital do produtor
+  rural, regime de caixa, por imóvel, com participantes e contas bancárias, no layout
+  oficial. **Sendo obrigação legal, é candidata a subir para a Fase 1** — depende da
+  confirmação do contador.
 - **Lançamento por áudio e foto**: o funcionário fala o que fez, o sistema monta o
   lançamento para conferência.
 - **Relatórios com o assistente**: resumo semanal e relatório mensal de safra, gado e
@@ -73,6 +82,22 @@ Começa após 1 a 2 meses de uso real da Fase 1.
 - **Simulador de propostas**: compara propostas de venda pelo preço líquido na porteira.
 - **Rastreabilidade de lotes de café**: talhão → colheita → secagem → armazém → venda,
   viabilizando a venda como café especial.
+- **Armazém, umidade e perda de peso** (`019-armazem-estocagem-e-umidade`): custo de
+  estocagem por competência e a perda de peso do café guardado.
+- **Perdas de produção** (`020-perdas-de-producao`): morte de animal, perda de colheita
+  e perda de insumo, com causa classificada.
+- **Carregar ou vender** (`021-carregar-ou-vender-cafe`): preço de equilíbrio do
+  carregamento — perdas e custo de armazém contra a valorização da saca.
+- **Qualidade do café** (`022-qualidade-do-cafe`): classificação por lote, devolvida ao
+  talhão de origem.
+- **Cotações de mercado** (`023-cotacoes-de-mercado`): saca, arroba e câmbio, com
+  referência manual enquanto não houver licença (constitution §10).
+- **Sentinela de desvio** (`026-sentinela-de-desvio`): esperado × realizado em estoque,
+  dose por talhão e contagem de rebanho. Aponta divergência, nunca pessoa.
+- **Auditoria de compras** (`027-auditoria-de-compras`): preço pago contra a referência
+  interna, concentração por fornecedor e compra sem contrapartida física.
+- **Identificação do gado** (`028-identificacao-e-gps-do-gado`): brinco com histórico,
+  leitura eletrônica e, condicionado à conta fechar, rastreador GPS.
 
 ---
 
@@ -86,8 +111,14 @@ Bloco comercial independente; pode rodar em paralelo à Fase 2.
   pedido de compra, sem digitação. A Fase 1 entrega a importação manual de XML
   (`014-importacao-xml-notas-fiscais`); aqui ela vira automática.
 - **Conciliação bancária** por OFX, casando extrato com os eventos de caixa.
-- **Compras**: cotação, pedido, recebimento e casamento com a nota de entrada.
-- **Contratos de venda** de café e gado, com acompanhamento de entrega e saldo.
+- **Compras** (`018-compras-cotacao-e-autorizacao`): requisição, cotação, alçada de
+  autorização, liberação, recebimento e casamento com a nota de entrada.
+- **Contratos de venda** (`025-contratos-de-venda`) de café e gado, com acompanhamento
+  de entrega e saldo. O sistema preenche a minuta do produtor; não redige cláusula.
+- **Contas a pagar, a receber e fluxo de caixa** (`031-contas-a-pagar-e-receber`):
+  títulos, baixas, projeção de saldo e previsto × realizado.
+- **Adequação a IBS e CBS** (`030-adequacao-ibs-e-cbs`): parâmetros fiscais com
+  vigência, fora do código. Depende inteiramente do contador.
 - **Fechamento financeiro** por período, por fazenda e consolidado do grupo, com
   travamento do período fechado.
 - **BI**: painéis analíticos por fazenda, frente e safra.
@@ -115,5 +146,30 @@ em TypeScript (ADR-0001).
   (constitution §3), mas onboarding, cobrança e isolamento operacional não estão
   planejados.
 - Aplicativo nativo. O PWA instalável atende Android e iPhone.
-- Controle de estoque de insumos com saldo em tempo real.
 - Gestão de máquinas e manutenção além do rateio de custo.
+
+---
+
+## Insumos de 2026-09-30
+
+Dezenove pedidos chegaram pelo WhatsApp em 2026-09-30 e viraram as features **016 a
+031**. Três coisas precisam ficar registradas aqui, porque mudam decisão:
+
+**1. Estoque entrou e contradiz duas decisões anteriores.** O controle de estoque
+estava em "Fora de escopo, por ora" neste roadmap, e as features `004` e `008` o
+excluíam. Além disso, o gestor havia informado no levantamento que o insumo é comprado
+**por aplicação, não estocado**. A feature `017` só deve ser aprovada depois que essa
+contradição for resolvida — e a `026` (sentinela de desvio) depende dela para existir.
+
+**2. "Gado leiteiro" apareceu pela primeira vez.** Até aqui, gado é mercadoria: compra,
+emprenha, vende. Se houver produção de leite, é uma **quarta frente**, com litragem,
+preço por litro e laticínio — e precisa de spec própria. Registrado como dúvida 1 da
+feature `023`.
+
+**3. O somatório não cabe nas 16 semanas da Fase 1.** A estimativa original já
+precisava ser revista por causa do ADR-0015 (tela de digitação do escritório). Com
+estas dezesseis features, a revisão de escopo, prazo e preço precisa acontecer **antes**
+de qualquer `/spec-plan`.
+
+As dezesseis specs acumulam **109 dúvidas abertas**, a maioria para o produtor e para o
+contador. Nenhuma delas foi preenchida por suposição.
