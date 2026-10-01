@@ -132,14 +132,18 @@ escrituração formal e o arquivo no layout.
 1. O livro caixa é **regime de caixa**: usa `cash_date` (constitution §5, glossário).
 2. A escrituração é **por imóvel**, com inscrição estadual própria; não há livro
    consolidado do grupo para fins fiscais.
-3. Participante e conta bancária são obrigatórios nos lançamentos que vão ao livro.
-4. Pendência bloqueia a geração; o sistema nunca preenche campo obrigatório por
+3. **A obrigatoriedade, porém, é avaliada pelo produtor**, somando a receita de todos
+   os imóveis — não fazenda a fazenda. Com cinco fazendas, a soma pode ultrapassar o
+   limite sem que nenhuma delas o ultrapasse sozinha. Limite: do produtor.
+   Escrituração: por imóvel. **Confirmar com o contador (dúvida 2).**
+4. Participante e conta bancária são obrigatórios nos lançamentos que vão ao livro.
+5. Pendência bloqueia a geração; o sistema nunca preenche campo obrigatório por
    suposição.
-5. A versão do layout é **configurada e versionada**; mudança de layout da Receita não
+6. A versão do layout é **configurada e versionada**; mudança de layout da Receita não
    exige alteração de código de domínio.
-6. Período entregue é travado; correção é por ajuste ou retificação registrada.
-7. Registro importado permanece marcado (constitution §11).
-8. Operador não tem superfície nesta feature (constitution §6).
+7. Período entregue é travado; correção é por ajuste ou retificação registrada.
+8. Registro importado permanece marcado (constitution §11).
+9. Operador não tem superfície nesta feature (constitution §6).
 
 ## Fora de escopo
 
@@ -154,7 +158,7 @@ escrituração formal e o arquivo no layout.
 | #   | Dúvida                                                                                                                                                       | Para quem | Estado |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------ |
 | 1   | **Levantado: o limite é R$ 4,8 milhões** de receita bruta anual da atividade rural (IN RFB 1.848/2018). O produtor falou em R$ 4 mi. **As fazendas ultrapassam?** | contador  | aberta |
-| 2   | O limite é por CPF do produtor ou por imóvel? Isso muda quais fazendas entram.                                                                               | contador  | aberta |
+| 2   | Entendimento atual: **o limite é do produtor** (soma de todos os imóveis) e **a escrituração é por imóvel**. Confirmar — e dizer também se é "acima de" ou "a partir de" R$ 4,8 milhões, que as fontes divergem. Com cinco fazendas, a soma pode passar sem que nenhuma passe sozinha. | contador  | aberta |
 | 3   | Quem entrega hoje e com qual sistema? Dá para ver um arquivo entregue do ano passado?                                                                        | contador  | aberta |
 | 4   | Levantado: leiaute na **versão 1.3** (registros 0000, 0010, 0030, 0040, 0050, Q100, Q200, 9999). Confirmar se é a usada pelo escritório.                      | contador  | aberta |
 | 5   | Levantado: o `Q100` reserva os códigos de conta **`000` (espécie)** e **`999` (recurso em trânsito)**. Isso cobre a despesa de campo sem conta bancária?      | contador  | aberta |
